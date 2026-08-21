@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Eye } from "lucide-react";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { BidCount, Countdown } from "@/components/countdown";
 import { ExternalLinkButton } from "@/components/external-link-dialog";
@@ -8,8 +8,6 @@ import { ImageGallery } from "@/components/image-gallery";
 import { ShareBar } from "@/components/share-bar";
 import { YouTubeEmbed } from "@/components/youtube-embed";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { getListing, getListingContacts, placeBid, recordView } from "@/lib/auction/server";
 import type { ListingContacts, ListingDetail } from "@/lib/auction/types";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
@@ -49,8 +47,7 @@ function ListingPage() {
   const [listing, setListing] = useState<ListingDetail | null>(loaded ?? null);
   const [contacts, setContacts] = useState<ListingContacts | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [amount, setAmount] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState<5 | 10 | 50 | null>(null);
 
   async function load() {
     try {
@@ -113,28 +110,19 @@ function ListingPage() {
     void recordView({ data: { id: listingId } });
   }, [listingId]);
 
-  const minBid = useMemo(() => {
-    if (!listing) return 1;
-    return listing.bidCount === 0 ? listing.currentPrice : listing.currentPrice + 1;
-  }, [listing]);
-
-  useEffect(() => {
-    if (listing) setAmount(String(minBid));
-  }, [listing, minBid]);
-
   const isOwner = Boolean(user && listing && user.id === listing.sellerId);
   const live = listing?.status === "active";
+  const bidSteps = [5, 10, 50] as const;
 
-  async function onBid(e: FormEvent) {
-    e.preventDefault();
+  async function onBid(increment: 5 | 10 | 50) {
     if (!user) {
       await navigate({ to: "/login" });
       return;
     }
-    setSubmitting(true);
+    setSubmitting(increment);
     try {
-      await placeBid({ data: { listingId, amount: Number.parseInt(amount, 10) } });
-      toast.success("叫價成功");
+      const result = await placeBid({ data: { listingId, increment } });
+      toast.success(`叫價成功 ${formatHkd(result.amount)}`);
       await load();
     } catch (err) {
       const message = err instanceof Error ? err.message : "叫價失敗";
@@ -144,7 +132,7 @@ function ListingPage() {
       }
       toast.error(message);
     } finally {
-      setSubmitting(false);
+      setSubmitting(null);
     }
   }
 
@@ -226,28 +214,33 @@ function ListingPage() {
           <p className="text-sm text-muted">這是你的拍賣品，不能叫價。結束後可在「我的」查看瀏覽次數。</p>
         ) : null}
         {live && !isOwner ? (
-          <form onSubmit={(e) => void onBid(e)} className="space-y-3 rounded-xl border border-border bg-surface p-4">
-            <div className="space-y-2">
-              <Label htmlFor="bid">叫價（最低 {formatHkd(minBid)}）</Label>
-              <Input
-                id="bid"
-                inputMode="numeric"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value.replace(/[^\d]/g, ""))}
-              />
-            </div>
+          <div className="space-y-3 rounded-xl border border-border bg-surface p-4">
+            <p className="text-sm text-muted">每次叫價加 $5、$10 或 $50</p>
             {isPending ? (
               <div className="h-12 animate-pulse rounded-md bg-surface-2" />
             ) : user ? (
-              <Button type="submit" className="h-12 w-full text-base" disabled={submitting}>
-                {submitting ? "提交中…" : "確認叫價"}
-              </Button>
+              <div className="grid grid-cols-3 gap-2">
+                {bidSteps.map((step) => (
+                  <Button
+                    key={step}
+                    type="button"
+                    className="h-14 flex-col gap-0.5 text-base"
+                    disabled={submitting !== null}
+                    onClick={() => void onBid(step)}
+                  >
+                    <span className="font-display text-lg leading-none">+{formatHkd(step)}</span>
+                    <span className="text-xs font-normal opacity-80">
+                      {submitting === step ? "提交中…" : formatHkd(listing.currentPrice + step)}
+                    </span>
+                  </Button>
+                ))}
+              </div>
             ) : (
               <Button type="button" className="h-12 w-full text-base" asChild>
                 <Link to="/login">登入後叫價</Link>
               </Button>
             )}
-          </form>
+          </div>
         ) : null}
         <div>
           <h2 className="mb-3 text-sm font-medium text-muted">叫價紀錄</h2>

@@ -415,15 +415,17 @@ export const createListing = createServerFn({ method: "POST" })
 
 export const placeBid = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator((d: { listingId: number; amount: number }) => d)
+  .validator((d: { listingId: number; increment: 5 | 10 | 50 }) => d)
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     await settleAndPurge(sql);
     const profile = await ensureProfile(sql, context.userId);
     if (profile.isBlocked) throw new Error("帳戶已被封鎖，無法叫價");
     const listingId = asInt(data.listingId);
-    const amount = asInt(data.amount);
-    if (amount < 1) throw new Error("叫價金額不正確");
+    const increment = asInt(data.increment);
+    if (increment !== 5 && increment !== 10 && increment !== 50) {
+      throw new Error("叫價只可加 $5、$10 或 $50");
+    }
     const rows = await sql<ListingRow>`
       select * from listings where id = ${listingId} and status <> 'removed'
     `;
@@ -432,20 +434,15 @@ export const placeBid = createServerFn({ method: "POST" })
     if (listing.seller_id === context.userId) throw new Error("不能對自己的拍賣品叫價");
     if (asStatus(listing.status) !== "active") throw new Error("拍賣已結束");
     if (new Date(asIso(listing.ends_at)).getTime() <= Date.now()) throw new Error("拍賣已結束");
-    const bidCount = asInt(listing.bid_count);
     const current = asInt(listing.current_price);
-    const min = bidCount === 0 ? current : current + 1;
-    if (amount < min) throw new Error(`叫價須至少 ${min}`);
+    const amount = current + increment;
     const updated = await sql<{ id: number }>`
       update listings
       set current_price = ${amount}, bid_count = bid_count + 1
       where id = ${listingId}
         and status = 'active'
         and ends_at > now()
-        and (
-          (bid_count = 0 and ${amount} >= current_price)
-          or (bid_count > 0 and ${amount} > current_price)
-        )
+        and current_price = ${current}
       returning id
     `;
     if (!updated[0]) throw new Error("叫價失敗，可能已有更高叫價");
@@ -453,7 +450,7 @@ export const placeBid = createServerFn({ method: "POST" })
       insert into bids (listing_id, bidder_id, amount)
       values (${listingId}, ${context.userId}, ${amount})
     `;
-    return { ok: true };
+    return { ok: true, amount };
   });
 
 export const listMine = createServerFn({ method: "GET" })

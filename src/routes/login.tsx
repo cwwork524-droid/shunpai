@@ -8,7 +8,7 @@ function Login() {
   return (
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center px-4 py-12">
       <h1 className="font-display text-3xl font-semibold tracking-tight">登入瞬拍</h1>
-      <p className="mt-2 text-sm text-muted">只可以用 Google 或 Facebook。登入後才可以刊登與叫價。</p>
+      <p className="mt-2 text-sm text-muted">用 Google 登入後才可以刊登與叫價。</p>
       {authEnabled ? (
         <div className="mt-8 space-y-3">
           {GROK_PROVIDERS.map((p) => (

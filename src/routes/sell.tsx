@@ -21,6 +21,7 @@ function SellPage() {
   const [images, setImages] = useState<string[]>([]);
   const [startingPrice, setStartingPrice] = useState("100");
   const [durationHours, setDurationHours] = useState<2 | 8>(2);
+  const [bidIncrements, setBidIncrements] = useState<number[]>([5, 10, 50]);
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [websiteName, setWebsiteName] = useState("Carousell");
   const [youtubeUrl, setYoutubeUrl] = useState("");
@@ -54,6 +55,7 @@ function SellPage() {
           images,
           startingPrice: Number.parseInt(startingPrice, 10),
           durationHours,
+          bidIncrements: bidIncrements as (5 | 10 | 50)[],
           websiteUrl,
           websiteName,
           youtubeUrl,
@@ -146,6 +148,36 @@ function SellPage() {
                 {hours} 小時
               </button>
             ))}
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Label>叫價加幅（可多選）</Label>
+          <p className="text-xs text-muted">買家每次叫價可選你允許嘅加幅</p>
+          <div className="grid grid-cols-3 gap-2">
+            {([5, 10, 50] as const).map((step) => {
+              const on = bidIncrements.includes(step);
+              return (
+                <button
+                  key={step}
+                  type="button"
+                  onClick={() =>
+                    setBidIncrements((prev) => {
+                      if (prev.includes(step)) {
+                        const next = prev.filter((n) => n !== step);
+                        return next.length > 0 ? next : prev;
+                      }
+                      return [...prev, step].sort((a, b) => a - b);
+                    })
+                  }
+                  className={cn(
+                    "h-14 rounded-md border text-sm font-medium",
+                    on ? "border-fg bg-fg text-bg" : "border-border bg-surface text-fg",
+                  )}
+                >
+                  +${step}
+                </button>
+              );
+            })}
           </div>
         </div>
         <div className="space-y-2">

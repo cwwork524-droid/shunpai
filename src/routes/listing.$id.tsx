@@ -137,24 +137,26 @@ function ListingPage() {
         {listing.youtubeUrl ? <YouTubeEmbed url={listing.youtubeUrl} /> : null}
       </section>
 
-      <div className="my-8 grid grid-cols-2 gap-3 rounded-xl border border-accent/30 bg-accent-soft px-4 py-5 sm:grid-cols-3">
+      <div className="my-8 space-y-5 rounded-xl border border-accent/30 bg-accent-soft px-4 py-5">
         <div>
           <p className="text-xs font-medium text-muted">倒數</p>
           <div className="mt-2">
             <Countdown endsAt={listing.endsAt} size="lg" />
           </div>
         </div>
-        <div>
-          <p className="text-xs font-medium text-muted">叫價人數</p>
-          <div className="mt-2">
-            <BidCount count={listing.bidCount} size="lg" />
+        <div className="grid grid-cols-2 gap-4">
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-muted">叫價人數</p>
+            <div className="mt-2">
+              <BidCount count={listing.bidCount} size="lg" />
+            </div>
           </div>
-        </div>
-        <div className="col-span-2 sm:col-span-1">
-          <p className="text-xs font-medium text-muted">目前叫價</p>
-          <p className="mt-2 font-display text-3xl font-semibold tabular-nums tracking-tight sm:text-4xl">
-            {formatHkd(listing.currentPrice)}
-          </p>
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-muted">目前叫價</p>
+            <p className="mt-2 font-display text-3xl font-semibold tabular-nums tracking-tight sm:text-4xl">
+              {formatHkd(listing.currentPrice)}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -227,7 +229,7 @@ function ListingPage() {
         <p className="text-xs font-medium tracking-[0.2em] text-faint">
           {listing.websiteUrl ? "04 分享" : "03 分享"}
         </p>
-        <ShareBar title={listing.title} />
+        <ShareBar title={listing.title} imageUrl={listing.images[0] ?? null} />
       </section>
     </main>
   );

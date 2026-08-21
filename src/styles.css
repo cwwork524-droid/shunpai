@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #f4f0ea;
+  --color-surface: #fffdf8;
+  --color-surface-2: #ebe6de;
+  --color-fg: #1a1614;
+  --color-muted: #6b635c;
+  --color-faint: #9a928a;
+  --color-border: #ddd4c7;
+  --color-accent: #c41e3a;
+  --color-accent-fg: #fffdf8;
+  --color-accent-soft: #f8e4e7;
+  --color-success: #2f6f4e;
+  --color-warning: #9a5b12;
+  --font-sans: "Noto Sans TC", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Noto Serif TC", "Noto Serif", "Songti TC", serif;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1.25rem;
+  --radius-xl: 1.75rem;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background: var(--color-bg);
+    color: var(--color-fg);
+  }
+
+  body {
+    min-height: 100dvh;
+    background:
+      radial-gradient(1200px 480px at 12% -10%, color-mix(in oklab, var(--color-accent) 8%, transparent), transparent 60%),
+      var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+    font-family: var(--font-display);
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

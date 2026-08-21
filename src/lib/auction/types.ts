@@ -33,6 +33,8 @@ export type ListingContacts = {
   seller: ContactPerson | null;
 };
 
+export type BidIncrement = 5 | 10 | 50;
+
 export type ListingDetail = {
   id: number;
   sellerId: string;
@@ -50,6 +52,7 @@ export type ListingDetail = {
   endsAt: string;
   startsAt: string;
   durationHours: number;
+  bidIncrements: BidIncrement[];
   status: ListingStatus;
   winnerId: string | null;
   createdAt: string;
@@ -82,6 +85,7 @@ export type CreateListingInput = {
   images: string[];
   startingPrice: number;
   durationHours: 2 | 8;
+  bidIncrements: BidIncrement[];
   websiteUrl: string;
   websiteName: string;
   youtubeUrl: string;

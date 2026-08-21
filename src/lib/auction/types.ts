@@ -21,6 +21,18 @@ export type BidRow = {
   createdAt: string;
 };
 
+export type ContactPerson = {
+  userId: string;
+  name: string;
+  email: string | null;
+  amount?: number;
+};
+
+export type ListingContacts = {
+  topBuyers: ContactPerson[] | null;
+  seller: ContactPerson | null;
+};
+
 export type ListingDetail = {
   id: number;
   sellerId: string;

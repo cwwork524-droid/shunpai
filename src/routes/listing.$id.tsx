@@ -10,8 +10,8 @@ import { YouTubeEmbed } from "@/components/youtube-embed";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getListing, placeBid, recordView } from "@/lib/auction/server";
-import type { ListingDetail } from "@/lib/auction/types";
+import { getListing, getListingContacts, placeBid, recordView } from "@/lib/auction/server";
+import type { ListingContacts, ListingDetail } from "@/lib/auction/types";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { formatHkd } from "@/lib/utils";
 
@@ -47,6 +47,7 @@ function ListingPage() {
   const navigate = useNavigate();
   const { user, isPending } = useCurrentUserState();
   const [listing, setListing] = useState<ListingDetail | null>(loaded ?? null);
+  const [contacts, setContacts] = useState<ListingContacts | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [amount, setAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -75,6 +76,30 @@ function ListingPage() {
   useEffect(() => {
     if (loaded) setListing(loaded);
   }, [loaded]);
+
+  useEffect(() => {
+    if (!user || !listing) {
+      setContacts(null);
+      return;
+    }
+    const maySee =
+      user.id === listing.sellerId || (listing.status === "sold" && user.id === listing.winnerId);
+    if (!maySee) {
+      setContacts(null);
+      return;
+    }
+    let cancelled = false;
+    void getListingContacts({ data: { id: listing.id } })
+      .then((data) => {
+        if (!cancelled) setContacts(data);
+      })
+      .catch(() => {
+        if (!cancelled) setContacts(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, listing]);
 
   useEffect(() => {
     if (!Number.isFinite(listingId)) return;
@@ -242,6 +267,45 @@ function ListingPage() {
             </ul>
           )}
         </div>
+        {contacts?.topBuyers && contacts.topBuyers.length > 0 ? (
+          <div className="rounded-xl border border-border bg-surface p-4">
+            <h2 className="mb-3 text-sm font-medium text-muted">最高 3 名買家</h2>
+            <ol className="space-y-3">
+              {contacts.topBuyers.map((buyer, index) => (
+                <li key={buyer.userId} className="flex items-start justify-between gap-3 text-sm">
+                  <div className="min-w-0">
+                    <p className="font-medium">
+                      {index + 1}. {buyer.name}
+                    </p>
+                    {buyer.email ? (
+                      <a href={`mailto:${buyer.email}`} className="break-all text-accent">
+                        {buyer.email}
+                      </a>
+                    ) : (
+                      <p className="text-faint">沒有電郵</p>
+                    )}
+                  </div>
+                  {buyer.amount != null ? (
+                    <span className="shrink-0 font-medium tabular-nums">{formatHkd(buyer.amount)}</span>
+                  ) : null}
+                </li>
+              ))}
+            </ol>
+          </div>
+        ) : null}
+        {contacts?.seller ? (
+          <div className="rounded-xl border border-border bg-surface p-4">
+            <h2 className="mb-3 text-sm font-medium text-muted">賣家聯絡</h2>
+            <p className="text-sm font-medium">{contacts.seller.name}</p>
+            {contacts.seller.email ? (
+              <a href={`mailto:${contacts.seller.email}`} className="break-all text-sm text-accent">
+                {contacts.seller.email}
+              </a>
+            ) : (
+              <p className="text-sm text-faint">沒有電郵</p>
+            )}
+          </div>
+        ) : null}
       </section>
 
       {listing.websiteUrl ? (

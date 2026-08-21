@@ -4,8 +4,10 @@ import { authMiddleware } from "@/lib/auth/middleware";
 import { isHttpUrl, parseYouTubeId } from "@/lib/utils";
 import type {
   AdminUser,
+  ContactPerson,
   CreateListingInput,
   ListingCard,
+  ListingContacts,
   ListingDetail,
   ListingStatus,
   MineListing,
@@ -271,6 +273,79 @@ export const getListing = createServerFn({ method: "GET" })
       })),
     };
     return detail;
+  });
+
+export const getListingContacts = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .validator((d: { id: number }) => d)
+  .handler(async ({ context, data }): Promise<ListingContacts> => {
+    const sql = await getSql();
+    const id = asInt(data.id);
+    const rows = await sql<{
+      seller_id: string;
+      winner_id: string | null;
+      status: string;
+    }>`
+      select seller_id, winner_id, status
+      from listings
+      where id = ${id} and status <> 'removed'
+    `;
+    const row = rows[0];
+    if (!row) throw new Error("找不到這件拍賣品");
+
+    const isSeller = context.userId === row.seller_id;
+    const isWinner = row.status === "sold" && context.userId === row.winner_id;
+    if (!isSeller && !isWinner) throw new Error("沒有權限查看聯絡資料");
+
+    let topBuyers: ContactPerson[] | null = null;
+    if (isSeller) {
+      const buyers = await sql<{
+        bidder_id: string;
+        name: string | null;
+        email: string | null;
+        amount: number;
+      }>`
+        select
+          b.bidder_id,
+          coalesce(p.display_name, u.name, '會員') as name,
+          u.email,
+          max(b.amount) as amount
+        from bids b
+        left join profiles p on p.user_id = b.bidder_id
+        left join "user" u on u.id = b.bidder_id
+        where b.listing_id = ${id}
+        group by b.bidder_id, p.display_name, u.name, u.email
+        order by max(b.amount) desc
+        limit 3
+      `;
+      topBuyers = buyers.map((buyer) => ({
+        userId: buyer.bidder_id,
+        name: buyer.name?.trim() || "會員",
+        email: buyer.email?.trim() || null,
+        amount: asInt(buyer.amount),
+      }));
+    }
+
+    let seller: ContactPerson | null = null;
+    if (isWinner) {
+      const sellers = await sql<{
+        name: string | null;
+        email: string | null;
+      }>`
+        select coalesce(p.display_name, u.name, '會員') as name, u.email
+        from listings l
+        left join profiles p on p.user_id = l.seller_id
+        left join "user" u on u.id = l.seller_id
+        where l.id = ${id}
+      `;
+      seller = {
+        userId: row.seller_id,
+        name: sellers[0]?.name?.trim() || "會員",
+        email: sellers[0]?.email?.trim() || null,
+      };
+    }
+
+    return { topBuyers, seller };
   });
 
 export const recordView = createServerFn({ method: "POST" })

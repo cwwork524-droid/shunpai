@@ -338,7 +338,7 @@ export function resolveShareImageUrl(raw, host) {
   const value = String(raw ?? "").trim();
   if (!value || value.startsWith("data:")) return "";
   const publicHost = resolvePublicHost(host);
-  if (value.startsWith("/cover/") || value.startsWith("/seed/") || value.startsWith("/api/")) {
+  if (value.startsWith("/api/cover/") || value.startsWith("/cover/") || value.startsWith("/seed/") || value.startsWith("/api/")) {
     if (!publicHost) return "";
     return `https://${publicHost}${value}`;
   }

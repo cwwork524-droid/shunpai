@@ -7,6 +7,9 @@ import test from "node:test";
 import {
   appNameFromHost,
   createHeadInjector,
+  escapeHtml,
+  extractShareImage,
+  extractShareTitle,
   grokXCreatorHeadTags,
   injectGrokPwaHead,
   isDocumentPath,
@@ -14,6 +17,8 @@ import {
   publicAppHost,
   renderWebManifest,
   resolveOgCardAsset,
+  resolveOgTitle,
+  resolveShareImageUrl,
   snapshotOgIdentity,
   stripInstallParams,
 } from "./grok-pwa-shared.mjs";
@@ -518,3 +523,57 @@ test("vite plugin bakes og identity as a virtual module", () => {
   assert.match(plugin, /snapshotOgIdentity/);
 });
 
+test("listing document title before · wins over site.title", () => {
+  assert.equal(
+    resolveOgTitle({ title: "瞬拍" }, "瞬拍", "shunpai.grok.me", "德製旁軸菲林相機 · 瞬拍"),
+    "德製旁軸菲林相機",
+  );
+  const out = injectGrokPwaHead(
+    "<html><head><title>德製旁軸菲林相機 · 瞬拍</title></head></html>",
+    { host: "shunpai.grok.me", site: { title: "瞬拍", card: "custom" } },
+  );
+  assert.match(out, /property="og:title" content="德製旁軸菲林相機"/);
+  assert.doesNotMatch(out, /property="og:title" content="瞬拍"/);
+});
+
+test("share-title override wins even without · in the document title", () => {
+  const html =
+    '<html><head><title>瞬拍</title><meta name="share-title" content="靜音機械鍵盤"></head></html>';
+  assert.equal(extractShareTitle(html), "靜音機械鍵盤");
+  const out = injectGrokPwaHead(html, {
+    host: "shunpai.grok.me",
+    site: { title: "瞬拍", card: "custom" },
+  });
+  assert.match(out, /property="og:title" content="靜音機械鍵盤"/);
+});
+
+test("share-image /api/cover/ becomes an absolute og:image URL", () => {
+  const html =
+    '<html><head><title>德製旁軸菲林相機 · 瞬拍</title><meta name="share-image" content="/api/cover/12"></head></html>';
+  assert.equal(extractShareImage(html), "/api/cover/12");
+  assert.equal(
+    resolveShareImageUrl("/api/cover/12", "shunpai.grok.me"),
+    "https://shunpai.grok.me/api/cover/12",
+  );
+  const out = injectGrokPwaHead(html, {
+    host: "shunpai.grok.me",
+    site: { title: "瞬拍", card: "custom" },
+  });
+  assert.match(
+    out,
+    /property="og:image" content="https:\/\/shunpai\.grok\.me\/api\/cover\/12"/,
+  );
+  assert.match(
+    out,
+    /name="twitter:image" content="https:\/\/shunpai\.grok\.me\/api\/cover\/12"/,
+  );
+  assert.doesNotMatch(out, /shunpai\.grok\.me\/og\.jpg/);
+});
+
+test("escapeHtml writes entities via unicode so they survive HTML rewriting", () => {
+  assert.equal(escapeHtml("&"), "\u0026amp;");
+  assert.equal(escapeHtml("<"), "\u0026lt;");
+  assert.equal(escapeHtml(">"), "\u0026gt;");
+  assert.equal(escapeHtml('"'), "\u0026quot;");
+  assert.equal(escapeHtml("'"), "\u0026#39;");
+});

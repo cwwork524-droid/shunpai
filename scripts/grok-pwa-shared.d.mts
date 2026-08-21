@@ -54,6 +54,9 @@ export declare function resolveOgTitle(
   documentTitle?: string,
 ): string;
 export declare function siteHasCustomCard(site?: OgSite): boolean;
+export declare function extractShareImage(html: string): string;
+export declare function extractShareTitle(html: string): string;
+export declare function resolveShareImageUrl(raw: string, host?: string): string;
 export declare function grokOgHeadTags(ctx?: {
   host?: string;
   appName?: string;
@@ -61,9 +64,8 @@ export declare function grokOgHeadTags(ctx?: {
   documentTitle?: string;
   cwd?: string;
   imageOverride?: string;
+  titleOverride?: string;
 }): string[];
-export declare function extractShareImage(html: string): string;
-export declare function resolveShareImageUrl(raw: string, host?: string): string;
 export declare function stripShareMetaTags(html: string): string;
 export declare function normalizeHeadContext(ctx?: GrokHeadContext): {
   appName: string;

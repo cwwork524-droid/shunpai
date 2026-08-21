@@ -1,2 +1,2 @@
-alter table listings
-  add column if not exists bid_increments jsonb not null default '[5,10,50]'::jsonb;
+ALTER TABLE listings
+  ADD COLUMN IF NOT EXISTS bid_increments jsonb NOT NULL DEFAULT '[5, 10, 50]'::jsonb;

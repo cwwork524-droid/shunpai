@@ -80,7 +80,8 @@ function ListingPage() {
       return;
     }
     const maySee =
-      user.id === listing.sellerId || (listing.status === "sold" && user.id === listing.winnerId);
+      listing.status === "sold" &&
+      (user.id === listing.sellerId || user.id === listing.winnerId);
     if (!maySee) {
       setContacts(null);
       return;
@@ -169,7 +170,9 @@ function ListingPage() {
             </p>
           ) : null}
         </div>
-        <p className="text-sm text-muted">賣家 {listing.sellerName}</p>
+        <p className="text-sm text-muted">
+          賣家 {listing.status === "sold" || isOwner ? listing.sellerName : "（成交後顯示）"}
+        </p>
         {listing.description.trim() ? (
           <p className="whitespace-pre-wrap text-base leading-relaxed text-fg">{listing.description}</p>
         ) : null}
@@ -211,7 +214,7 @@ function ListingPage() {
           <p className="rounded-md bg-surface-2 px-4 py-3 text-sm">流標，沒有人叫價。</p>
         ) : null}
         {live && isOwner ? (
-          <p className="text-sm text-muted">這是你的拍賣品，不能叫價。結束後可在「我的」查看瀏覽次數。</p>
+          <p className="text-sm text-muted">這是你的拍賣品，不能叫價。成交後才會顯示買家名稱同電郵。</p>
         ) : null}
         {live && !isOwner ? (
           <div className="space-y-3 rounded-xl border border-border bg-surface p-4">
@@ -251,7 +254,7 @@ function ListingPage() {
               {listing.bids.map((bid) => (
                 <li key={bid.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
                   <span>
-                    {bid.bidderName}
+                    {listing.status === "sold" ? bid.bidderName : "買家"}
                     {user && bid.bidderId === user.id ? "（你）" : ""}
                   </span>
                   <span className="font-medium tabular-nums">{formatHkd(bid.amount)}</span>
@@ -262,7 +265,7 @@ function ListingPage() {
         </div>
         {contacts?.topBuyers && contacts.topBuyers.length > 0 ? (
           <div className="rounded-xl border border-border bg-surface p-4">
-            <h2 className="mb-3 text-sm font-medium text-muted">最高 3 名買家</h2>
+            <h2 className="mb-3 text-sm font-medium text-muted">買家聯絡</h2>
             <ol className="space-y-3">
               {contacts.topBuyers.map((buyer, index) => (
                 <li key={buyer.userId} className="flex items-start justify-between gap-3 text-sm">

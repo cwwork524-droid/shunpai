@@ -292,9 +292,10 @@ export const getListingContacts = createServerFn({ method: "GET" })
     `;
     const row = rows[0];
     if (!row) throw new Error("找不到這件拍賣品");
+    if (row.status !== "sold") throw new Error("拍賣完成後才可查看聯絡資料");
 
     const isSeller = context.userId === row.seller_id;
-    const isWinner = row.status === "sold" && context.userId === row.winner_id;
+    const isWinner = Boolean(row.winner_id) && context.userId === row.winner_id;
     if (!isSeller && !isWinner) throw new Error("沒有權限查看聯絡資料");
 
     let topBuyers: ContactPerson[] | null = null;

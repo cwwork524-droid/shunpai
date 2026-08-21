@@ -16,15 +16,37 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { formatHkd } from "@/lib/utils";
 
 export const Route = createFileRoute("/listing/$id")({
+  loader: async ({ params }) => {
+    const id = Number.parseInt(params.id, 10);
+    if (!Number.isFinite(id)) return null;
+    try {
+      return await getListing({ data: { id } });
+    } catch {
+      return null;
+    }
+  },
+  head: ({ loaderData, params }) => {
+    const title = loaderData?.title ? `${loaderData.title} · 瞬拍` : "瞬拍";
+    const desc = (loaderData?.description ?? "").trim() || "限時競投，即刻成交。";
+    const meta: Array<{ title?: string; name?: string; content?: string }> = [
+      { title },
+      { name: "description", content: desc.slice(0, 160) },
+    ];
+    if (loaderData?.images?.[0]) {
+      meta.push({ name: "share-image", content: `/api/cover/${params.id}` });
+    }
+    return { meta };
+  },
   component: ListingPage,
 });
 
 function ListingPage() {
   const { id } = Route.useParams();
   const listingId = Number.parseInt(id, 10);
+  const loaded = Route.useLoaderData();
   const navigate = useNavigate();
   const { user, isPending } = useCurrentUserState();
-  const [listing, setListing] = useState<ListingDetail | null>(null);
+  const [listing, setListing] = useState<ListingDetail | null>(loaded ?? null);
   const [error, setError] = useState<string | null>(null);
   const [amount, setAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -49,6 +71,10 @@ function ListingPage() {
     return () => window.clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listingId]);
+
+  useEffect(() => {
+    if (loaded) setListing(loaded);
+  }, [loaded]);
 
   useEffect(() => {
     if (!Number.isFinite(listingId)) return;
@@ -229,7 +255,7 @@ function ListingPage() {
         <p className="text-xs font-medium tracking-[0.2em] text-faint">
           {listing.websiteUrl ? "04 分享" : "03 分享"}
         </p>
-        <ShareBar title={listing.title} imageUrl={listing.images[0] ?? null} />
+        <ShareBar title={listing.title} imageUrl={listing.images[0] ?? null} listingId={listing.id} />
       </section>
     </main>
   );

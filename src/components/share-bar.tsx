@@ -1,7 +1,22 @@
 import { Check, Copy, Share2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+
+function fileFromDataUrl(src: string): File | null {
+  const match = /^data:(image\/[\w.+-]+);base64,([\s\S]+)$/.exec(src);
+  if (!match) return null;
+  try {
+    const binary = atob(match[2].replace(/\s/g, ""));
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+    const type = match[1];
+    const ext = type.includes("png") ? "png" : type.includes("webp") ? "webp" : "jpg";
+    return new File([bytes], `cover.${ext}`, { type });
+  } catch {
+    return null;
+  }
+}
 
 function absoluteUrl(src: string): string {
   if (src.startsWith("data:") || src.startsWith("http://") || src.startsWith("https://")) return src;
@@ -9,14 +24,16 @@ function absoluteUrl(src: string): string {
   return new URL(src, window.location.origin).href;
 }
 
-async function fileFromImage(src: string): Promise<File | null> {
+async function fileFromSrc(src: string): Promise<File | null> {
+  const fromData = fileFromDataUrl(src);
+  if (fromData) return fromData;
   try {
     const res = await fetch(absoluteUrl(src));
     if (!res.ok) return null;
     const blob = await res.blob();
     const type = blob.type.startsWith("image/") ? blob.type : "image/jpeg";
     const ext = type.includes("png") ? "png" : type.includes("webp") ? "webp" : "jpg";
-    return new File([blob], `listing.${ext}`, { type });
+    return new File([blob], `cover.${ext}`, { type });
   } catch {
     return null;
   }
@@ -25,12 +42,26 @@ async function fileFromImage(src: string): Promise<File | null> {
 export function ShareBar({
   title,
   imageUrl,
+  listingId,
 }: {
   title: string;
   imageUrl?: string | null;
+  listingId: number;
 }) {
   const [copied, setCopied] = useState(false);
-  const pageUrl = typeof window === "undefined" ? "" : window.location.href;
+  const [file, setFile] = useState<File | null>(null);
+  const coverPath = `/api/cover/${listingId}`;
+
+  useEffect(() => {
+    let cancelled = false;
+    const src = imageUrl?.startsWith("data:") ? imageUrl : coverPath;
+    void fileFromSrc(src).then((next) => {
+      if (!cancelled && next) setFile(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [imageUrl, coverPath]);
 
   async function copy() {
     try {
@@ -45,27 +76,25 @@ export function ShareBar({
 
   async function nativeShare() {
     const url = window.location.href;
-    const file = imageUrl ? await fileFromImage(imageUrl) : null;
-    const canFiles = Boolean(file && navigator.canShare?.({ files: [file] }));
+    const ready = file ?? (imageUrl ? fileFromDataUrl(imageUrl) : null);
+    const payload: ShareData = { title, text: `${title}\n${url}` };
 
-    if (canFiles && file) {
-      try {
-        await navigator.share({ title, text: title, url, files: [file] });
-        return;
-      } catch (err) {
-        if (err instanceof DOMException && err.name === "AbortError") return;
+    if (ready) {
+      const withFile = { ...payload, files: [ready] };
+      const allowed = !navigator.canShare || navigator.canShare({ files: [ready] });
+      if (allowed && navigator.share) {
         try {
-          await navigator.share({ title, files: [file] });
+          await navigator.share(withFile);
           return;
-        } catch (err2) {
-          if (err2 instanceof DOMException && err2.name === "AbortError") return;
+        } catch (err) {
+          if (err instanceof DOMException && err.name === "AbortError") return;
         }
       }
     }
 
     if (navigator.share) {
       try {
-        await navigator.share({ title, text: title, url });
+        await navigator.share({ title, text: payload.text, url });
         return;
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return;
@@ -78,14 +107,10 @@ export function ShareBar({
   return (
     <div className="space-y-3">
       {imageUrl ? (
-        <img
-          src={imageUrl}
-          alt=""
-          className="aspect-[4/3] w-full rounded-md object-cover"
-        />
+        <img src={imageUrl} alt="" className="aspect-[4/3] w-full rounded-md object-cover" />
       ) : null}
       <div className="flex flex-col gap-2 sm:flex-row">
-        <Button type="button" variant="outline" className="flex-1" onClick={copy}>
+        <Button type="button" variant="outline" className="flex-1" onClick={() => void copy()}>
           {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
           複製連結
         </Button>
@@ -94,7 +119,6 @@ export function ShareBar({
           分享
         </Button>
       </div>
-      <p className="sr-only">{pageUrl}</p>
     </div>
   );
 }

@@ -504,3 +504,49 @@ export const adminOverview = createServerFn({ method: "GET" })
     }));
     return { listings, users };
   });
+
+export async function listingCoverResponse(id: number): Promise<Response> {
+  if (!Number.isFinite(id) || id < 1) {
+    return new Response("Not found", { status: 404 });
+  }
+  const sql = await getSql();
+  const rows = await sql<{ images: unknown }>`
+    select images from listings
+    where id = ${id} and status <> 'removed'
+    limit 1
+  `;
+  const src = asImages(rows[0]?.images)[0];
+  if (!src) return new Response("Not found", { status: 404 });
+
+  const headers = (type: string, cache = "public, max-age=600") => ({
+    "Content-Type": type,
+    "Cache-Control": cache,
+    "Content-Disposition": 'inline; filename="cover.jpg"',
+  });
+
+  if (src.startsWith("data:")) {
+    const match = /^data:(image\/[\w.+-]+);base64,([\s\S]+)$/.exec(src);
+    if (!match) return new Response("Not found", { status: 404 });
+    const body = Buffer.from(match[2].replace(/\s/g, ""), "base64");
+    return new Response(body, { headers: headers(match[1]) });
+  }
+
+  if (src.startsWith("/seed/") && /^\/seed\/[A-Za-z0-9._-]+$/.test(src)) {
+    try {
+      const { readFile } = await import("node:fs/promises");
+      const { join } = await import("node:path");
+      const name = src.slice("/seed/".length);
+      const body = await readFile(join(process.cwd(), "public", "seed", name));
+      const type = name.endsWith(".png") ? "image/png" : "image/jpeg";
+      return new Response(body, { headers: headers(type, "public, max-age=86400") });
+    } catch {
+      return new Response(null, { status: 302, headers: { Location: src } });
+    }
+  }
+
+  if (src.startsWith("http://") || src.startsWith("https://")) {
+    return new Response(null, { status: 302, headers: { Location: src } });
+  }
+
+  return new Response("Not found", { status: 404 });
+}

@@ -16,6 +16,7 @@ import { Route as MineRouteImport } from './routes/mine'
 import { Route as SellRouteImport } from './routes/sell'
 import { Route as ListingIdRouteImport } from './routes/listing.$id'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiCoverIdRouteImport } from './routes/api/cover.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -52,6 +53,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCoverIdRoute = ApiCoverIdRouteImport.update({
+  id: '/api/cover/$id',
+  path: '/api/cover/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -61,6 +67,7 @@ export interface FileRoutesByFullPath {
   '/sell': typeof SellRoute
   '/listing/$id': typeof ListingIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/cover/$id': typeof ApiCoverIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -70,6 +77,7 @@ export interface FileRoutesByTo {
   '/sell': typeof SellRoute
   '/listing/$id': typeof ListingIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/cover/$id': typeof ApiCoverIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -80,6 +88,7 @@ export interface FileRoutesById {
   '/sell': typeof SellRoute
   '/listing/$id': typeof ListingIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/cover/$id': typeof ApiCoverIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -91,6 +100,7 @@ export interface FileRouteTypes {
     | '/sell'
     | '/listing/$id'
     | '/api/auth/$'
+    | '/api/cover/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -100,6 +110,7 @@ export interface FileRouteTypes {
     | '/sell'
     | '/listing/$id'
     | '/api/auth/$'
+    | '/api/cover/$id'
   id:
     | '__root__'
     | '/'
@@ -109,6 +120,7 @@ export interface FileRouteTypes {
     | '/sell'
     | '/listing/$id'
     | '/api/auth/$'
+    | '/api/cover/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -119,6 +131,7 @@ export interface RootRouteChildren {
   SellRoute: typeof SellRoute
   ListingIdRoute: typeof ListingIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiCoverIdRoute: typeof ApiCoverIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -172,6 +185,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/cover/$id': {
+      id: '/api/cover/$id'
+      path: '/api/cover/$id'
+      fullPath: '/api/cover/$id'
+      preLoaderRoute: typeof ApiCoverIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -183,6 +203,7 @@ const rootRouteChildren: RootRouteChildren = {
   SellRoute: SellRoute,
   ListingIdRoute: ListingIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiCoverIdRoute: ApiCoverIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -362,6 +362,20 @@ test("site.json title wins over the host slug", () => {
   assert.match(out, /property="og:title" content="Pixel Nova"/);
 });
 
+test("share-image meta becomes og:image for listing pages", () => {
+  const out = injectGrokPwaHead(
+    '<html><head><title>test · 瞬拍</title><meta name="share-image" content="/api/cover/1"></head></html>',
+    {
+      host: "k-bid.grok.me",
+      cwd: mkdtempSync(join(tmpdir(), "grok-og-share-")),
+      site: { title: "瞬拍", card: "custom", image: "/og.jpg" },
+    },
+  );
+  assert.match(out, /property="og:image" content="https:\/\/k-bid\.grok\.me\/api\/cover\/1"/);
+  assert.match(out, /name="twitter:image" content="https:\/\/k-bid\.grok\.me\/api\/cover\/1"/);
+  assert.doesNotMatch(out, /og\.jpg"/);
+});
+
 test("injects into documents with no head element", () => {
   const out = injectGrokPwaHead("<html><body>hi</body></html>", { appName: "Solo" });
   assert.match(out, /<head>/);

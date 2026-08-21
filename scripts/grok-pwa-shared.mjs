@@ -333,12 +333,41 @@ function applyCustomCardFromFs(site, cwd) {
   return { ...site, card: "custom", image: disk };
 }
 
+export function extractShareImage(html) {
+  const tags = String(html).match(/<meta\b[^>]*>/gi) || [];
+  for (const tag of tags) {
+    const name = [...tag.matchAll(/\bname\s*=\s*["']([^"']+)["']/gi)][0]?.[1];
+    if (String(name).toLowerCase() !== "share-image") continue;
+    const content = [...tag.matchAll(/\bcontent\s*=\s*["']([^"']+)["']/gi)][0]?.[1];
+    if (content) return unescapeHtml(content).trim();
+  }
+  return "";
+}
+
+export function resolveShareImageUrl(raw, host) {
+  const value = String(raw ?? "").trim();
+  if (!value || value.startsWith("data:")) return "";
+  const publicHost = resolvePublicHost(host);
+  if (value.startsWith("/cover/") || value.startsWith("/seed/") || value.startsWith("/api/")) {
+    if (!publicHost) return "";
+    return `https://${publicHost}${value}`;
+  }
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return "";
+    return url.href;
+  } catch {
+    return "";
+  }
+}
+
 export function grokOgHeadTags({
   host = "",
   appName = DEFAULT_APP_NAME,
   site = {},
   documentTitle = "",
   cwd = process.cwd(),
+  imageOverride = "",
 } = {}) {
   const title = resolveOgTitle(site, appName, host, documentTitle);
   const publicHost = resolvePublicHost(host);
@@ -354,16 +383,22 @@ export function grokOgHeadTags({
     tags.push(`<meta property="og:type" content="x:game">`);
   }
   if (publicHost) {
-    const asset = resolveOgCardAsset(site, cwd);
-    const custom = Boolean(asset);
-    let image = custom
-      ? `https://${publicHost}${asset.startsWith("/") ? asset : `/${asset}`}`
-      : `${ogServiceUrl()}/v1/card.png?host=${encodeURIComponent(publicHost)}&title=${encodeURIComponent(title)}`;
-    const color = !custom ? placeholderCardColor(site) : "";
-    if (color) image += `&color=${encodeURIComponent(color)}`;
-    tags.push(`<meta property="og:image" content="${escapeHtml(image)}">`);
-    tags.push(`<meta property="og:image:width" content="1200">`);
-    tags.push(`<meta property="og:image:height" content="630">`);
+    const override = resolveShareImageUrl(imageOverride, host);
+    if (override) {
+      tags.push(`<meta property="og:image" content="${escapeHtml(override)}">`);
+      tags.push(`<meta name="twitter:image" content="${escapeHtml(override)}">`);
+    } else {
+      const asset = resolveOgCardAsset(site, cwd);
+      const custom = Boolean(asset);
+      let image = custom
+        ? `https://${publicHost}${asset.startsWith("/") ? asset : `/${asset}`}`
+        : `${ogServiceUrl()}/v1/card.png?host=${encodeURIComponent(publicHost)}&title=${encodeURIComponent(title)}`;
+      const color = !custom ? placeholderCardColor(site) : "";
+      if (color) image += `&color=${encodeURIComponent(color)}`;
+      tags.push(`<meta property="og:image" content="${escapeHtml(image)}">`);
+      tags.push(`<meta property="og:image:width" content="1200">`);
+      tags.push(`<meta property="og:image:height" content="630">`);
+    }
     const banner = String(site.banner ?? "").trim();
     if (banner) {
       const bannerUrl = `https://${publicHost}${banner.startsWith("/") ? banner : `/${banner}`}`;
@@ -444,7 +479,14 @@ export function injectGrokPwaHead(html, ctx = {}) {
 
   next = insertAfterHeadOpen(
     next,
-    grokOgHeadTags({ host, appName, site, documentTitle, cwd }).join(""),
+    grokOgHeadTags({
+      host,
+      appName,
+      site,
+      documentTitle,
+      cwd,
+      imageOverride: extractShareImage(html),
+    }).join(""),
   );
 
   if (!next.includes("/grok-app-builder/extensions.js")) {

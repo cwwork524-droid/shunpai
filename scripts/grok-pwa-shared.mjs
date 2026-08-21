@@ -30,35 +30,28 @@ const SHARE_META_KEYS = new Set([
 
 export function escapeHtml(value) {
   return String(value)
-    .replaceAll("&", "&")
-    .replaceAll("<", "<")
-    .replaceAll(">", ">")
-    .replaceAll('"', """)
-    .replaceAll("'", "&#39;");
+    .replaceAll("&", "\u0026amp;")
+    .replaceAll("<", "\u0026lt;")
+    .replaceAll(">", "\u0026gt;")
+    .replaceAll('"', "\u0026quot;")
+    .replaceAll("'", "\u0026#39;");
 }
 
-/** Inverse of escapeHtml. Decode & last so a single pass undoes one encode. */
 function unescapeHtml(value) {
   return String(value)
-    .replaceAll("<", "<")
-    .replaceAll(">", ">")
-    .replaceAll(""", '"')
-    .replaceAll("&#39;", "'")
-    .replaceAll("&", "&");
+    .replaceAll("\u0026lt;", "<")
+    .replaceAll("\u0026gt;", ">")
+    .replaceAll("\u0026quot;", '"')
+    .replaceAll("\u0026#39;", "'")
+    .replaceAll("\u0026amp;", "&");
 }
 
-/** 6-digit hex for the og.grok.me placeholder, or "" if site.color is missing/invalid. */
 function placeholderCardColor(site = {}) {
   const raw = String(site.color ?? "").trim();
   const hex = raw.startsWith("#") ? raw.slice(1) : raw;
   return /^[0-9a-fA-F]{6}$/.test(hex) ? hex : "";
 }
 
-/**
- * "wild-race.grok.me" → "Wild Race". Only published app hosts encode the
- * display name in the first label. Preview / guest hosts are image origins
- * only — slugifying them produced internal names like "Hds Abc 3000 Xy".
- */
 export function appNameFromHost(hostHeader) {
   const host = String(hostHeader ?? "")
     .split(",")[0]
@@ -81,7 +74,6 @@ export function appNameFromHost(hostHeader) {
   );
 }
 
-/** True for Vercel system domains. Envoy rewrites origin Host to these; they SSO-protect `/og.jpg`. */
 function isVercelSystemHost(host) {
   return (
     host === "vercel.app" ||
@@ -91,7 +83,6 @@ function isVercelSystemHost(host) {
   );
 }
 
-/** Hostname suitable for absolute og:image URLs. Preview guests (X-Forwarded-Host) are allowed. */
 export function publicAppHost(hostHeader) {
   const host = String(hostHeader ?? "")
     .split(",")[0]
@@ -104,12 +95,6 @@ export function publicAppHost(hostHeader) {
   return host;
 }
 
-/**
- * Published apps always use `VITE_PUBLIC_HOSTNAME` (the grok.me host the
- * deployer injects). Live preview has no such env, so fall back to the
- * request host / X-Forwarded-Host. Never prefer request Host on a published
- * app — Envoy rewrites it to `*.vercel.app`.
- */
 export function resolvePublicHost(hostHeader) {
   return (
     publicAppHost(process.env?.VITE_PUBLIC_HOSTNAME) || publicAppHost(hostHeader)
@@ -124,7 +109,6 @@ export function isInstallQuery(url) {
   return (install === "1" || install === "true") && platform === "ios";
 }
 
-/** Paths that can carry an app document (vs assets / API / internals). */
 export function isDocumentPath(pathname) {
   const path = String(pathname ?? "");
   return (
@@ -141,7 +125,6 @@ export function acceptsHtml(accept) {
   return value === "" || value.includes("text/html") || value.includes("*/*");
 }
 
-/** The same URL without the install-tutorial params (used as the app link). */
 export function stripInstallParams(url) {
   const [path = "/", query = ""] = String(url ?? "/").split("?", 2);
   const params = new URLSearchParams(query);
@@ -297,9 +280,9 @@ export function resolveOgTitle(
   documentTitle = "",
 ) {
   const fromDoc = String(documentTitle ?? "").trim();
-  // Listing pages set "<item> · 瞬拍" — prefer the item name over site.title
+  // Listing pages set "<item> \u00b7 \u77ac\u62cd" — prefer the item name over site.title
   if (fromDoc) {
-    const sep = " · ";
+    const sep = " \u00b7 ";
     const at = fromDoc.lastIndexOf(sep);
     if (at > 0) {
       const item = fromDoc.slice(0, at).trim();

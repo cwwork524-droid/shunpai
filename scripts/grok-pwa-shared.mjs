@@ -83,18 +83,29 @@ function isVercelSystemHost(host) {
   );
 }
 
-export function publicAppHost(hostHeader) {
-  const host = String(hostHeader ?? "")
-    .split(",")[0]
-    .trim()
-    .split(":")[0]
-    .toLowerCase();
-  if (!host || !/^[a-z0-9.-]+$/.test(host) || !host.includes(".")) return "";
-  if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(host)) return "";
-  if (isVercelSystemHost(host)) return "";
-  return host;
+function firstPublicHost(hostHeader) {
+  const parts = String(hostHeader ?? "").split(",");
+  for (const part of parts) {
+    const host = part.trim().split(":")[0].toLowerCase();
+    if (!host || !/^[a-z0-9.-]+$/.test(host) || !host.includes(".")) continue;
+    if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(host)) continue;
+    if (isVercelSystemHost(host)) continue;
+    return host;
+  }
+  return "";
 }
 
+/** Hostname suitable for absolute og:image URLs. Vercel SSO hosts are never used. */
+export function publicAppHost(hostHeader) {
+  return firstPublicHost(hostHeader);
+}
+
+/**
+ * Published apps always use `VITE_PUBLIC_HOSTNAME` (the grok.me host the
+ * deployer injects). Live preview has no such env, so fall back to the
+ * request host / X-Forwarded-Host. Never prefer request Host on a published
+ * app — Envoy rewrites it to `*.vercel.app`, which 302s to Vercel SSO.
+ */
 export function resolvePublicHost(hostHeader) {
   return (
     publicAppHost(process.env?.VITE_PUBLIC_HOSTNAME) || publicAppHost(hostHeader)

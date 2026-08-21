@@ -260,6 +260,35 @@ test("rejects Vercel system hosts as og:image origins", () => {
   assert.equal(publicAppHost("demo.vercel.app:443"), "");
   assert.equal(publicAppHost("vercel.app"), "");
   assert.equal(publicAppHost("wild-race.grok.me"), "wild-race.grok.me");
+  assert.equal(
+    publicAppHost("01a0247f-5115-7cf1-8e1a-10d10a21df8d-h5gtahv8g-xai-org.vercel.app, clickhereplz.grok.me"),
+    "clickhereplz.grok.me",
+  );
+});
+
+test("listing cover uses grok.me even when request Host is Vercel", () => {
+  const prev = process.env.VITE_PUBLIC_HOSTNAME;
+  process.env.VITE_PUBLIC_HOSTNAME = "clickhereplz.grok.me";
+  try {
+    const html =
+      '<html><head><title>由戰鬥陀螺玩具商TAKARA TOMY研發 · 瞬拍</title><meta name="share-image" content="/api/cover/9"></head></html>';
+    const out = injectGrokPwaHead(html, {
+      host: "01a0247f-5115-7cf1-8e1a-10d10a21df8d-h5gtahv8g-xai-org.vercel.app",
+      site: { title: "瞬拍", card: "custom" },
+    });
+    assert.match(
+      out,
+      /property="og:image" content="https:\/\/clickhereplz\.grok\.me\/api\/cover\/9"/,
+    );
+    assert.match(
+      out,
+      /name="twitter:image" content="https:\/\/clickhereplz\.grok\.me\/api\/cover\/9"/,
+    );
+    assert.doesNotMatch(out, /vercel\.app/);
+  } finally {
+    if (prev === undefined) delete process.env.VITE_PUBLIC_HOSTNAME;
+    else process.env.VITE_PUBLIC_HOSTNAME = prev;
+  }
 });
 
 test("published VITE_PUBLIC_HOSTNAME wins over request Host for og:image", () => {
